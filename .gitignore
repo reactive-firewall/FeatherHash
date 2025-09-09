@@ -1,0 +1,79 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# C extensions
+*.[ao]
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# debug information files
+*.dwo
+
+# Distribution / packaging
+build/
+dist/
+downloads/
+lib/
+lib64/
+
+# Cache and Temps
+*~
+*.tmp
+.[Cc]ache
+Traces/
+*.log
+
+# don't store keychains
+trustdb.gpg
+
+# Other and Misc
+.DS_Store
+*.kbx
+Icon*
+*.workflow/xcuserdata
+*.xcodeproj/xcuserdata
+*.workflow/xcuserdata/*
+*.xcodeproj/project.workflow/xcuserdata/*
+# prevent including 3rd party git pre-rebase.sample
+*.xcodeproj/hooks/pre-rebase
+*.xcodeproj/hooks/pre-rebase.sample
+swiftpm
+swiftpm/*
+IDEWorkspaceChecks.plist
