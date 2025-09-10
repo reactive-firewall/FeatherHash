@@ -15,7 +15,7 @@
 # PATH=${PATH:-"/bin:/sbin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"} ;
 # hermetic build/install for FeatherHash
 # Usage: ./build-featherHash.sh [CC] [CFLAGS] [DESTDIR]
-set -euo
+set -eu
 
 # --- Configuration / defaults ---
 CC_ARG="${1:-}"
@@ -33,11 +33,15 @@ DESTDIR_ARG="${3:-}"
 
 # Paths (internal)
 SRCDIR="FeatherHash"
+SRC_SHARED="${SRCDIR}/sha2.c"
 SRC_1="${SRCDIR}/sha256sum.c"
-SRC_2="${SRCDIR}/sha2.c"
+SRC_2="${SRCDIR}/sha384sum.c"
+SRC_3="${SRCDIR}/sha512sum.c"
 HDR="${SRCDIR}/*.h"
 PREFIX="/bin"
-BINNAME="sha256sum"
+BINNAME_1="sha256sum"
+BINNAME_2="sha384sum"
+BINNAME_3="sha512sum"
 
 # DESTDIR safety: default to ./out if not provided
 DESTDIR="${DESTDIR_ARG:-./out}"
@@ -48,10 +52,13 @@ DESTDIR="$(cd "$(dirname "$DESTDIR")" && mkdir -p "$(basename "$DESTDIR")" && cd
 OBJDIR="${DESTDIR}/obj"
 BINDIR="${DESTDIR}/bin"
 INCLUDEDIR="${DESTDIR}/include"
-OUT_BIN_PATH="${DESTDIR}${PREFIX}/${BINNAME}"
-TMPOBJ_1="${OBJDIR}/${BINNAME}.o"
-TMPOBJ_2="${OBJDIR}/main.o"
-STAGED_BIN="${DESTDIR}${PREFIX}/${BINNAME}"
+OUT_BIN_PATH_1="${DESTDIR}${PREFIX}/${BINNAME_1}"
+OUT_BIN_PATH_2="${DESTDIR}${PREFIX}/${BINNAME_2}"
+OUT_BIN_PATH_3="${DESTDIR}${PREFIX}/${BINNAME_3}"
+SHARED_OBJ="${OBJDIR}/sha2.o"
+TMPOBJ_1="${OBJDIR}/${BINNAME_1}.o"
+TMPOBJ_2="${OBJDIR}/${BINNAME_2}.o"
+TMPOBJ_3="${OBJDIR}/${BINNAME_3}.o"
 
 # --- Helpers ---
 err() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -86,6 +93,15 @@ if [ -f "$HDR" ]; then
 fi
 
 # Source check
+[ -f "$SRC_SHARED" ] || err "source $SRC_SHARED not found"
+
+# Compile: explicit include path ensures hermetic headers
+printf 'Compiling %s -> %s\n' "$SRC_SHARED" "$SHARED_OBJ"
+# Split flags safely
+# shellcheck disable=SC2086
+$CC $CFLAGS -I"$INCLUDEDIR" -c -o "$SHARED_OBJ" "$SRC_SHARED" || err "compilation failed"
+
+# Source check
 [ -f "$SRC_1" ] || err "source $SRC_1 not found"
 
 # Compile: explicit include path ensures hermetic headers
@@ -103,41 +119,101 @@ printf 'Compiling %s -> %s\n' "$SRC_2" "$TMPOBJ_2"
 # shellcheck disable=SC2086
 $CC $CFLAGS -I"$INCLUDEDIR" -c -o "$TMPOBJ_2" "$SRC_2" || err "compilation failed"
 
+# Source check
+[ -f "$SRC_3" ] || err "source $SRC_3 not found"
+
+# Compile: explicit include path ensures hermetic headers
+printf 'Compiling %s -> %s\n' "$SRC_3" "$TMPOBJ_3"
+# Split flags safely
+# shellcheck disable=SC2086
+$CC $CFLAGS -I"$INCLUDEDIR" -c -o "$TMPOBJ_3" "$SRC_3" || err "compilation failed"
+
 # Link: attempt static then fallback to dynamic; keep hermetic LDFLAGS if provided
-printf 'Linking -> %s\n' "${BINDIR}/${BINNAME}"
+printf 'Linking -> %s\n' "${BINDIR}/${BINNAME_1}"
 mkdir -p -- "$BINDIR"
 # Try static link first
 set +e
 # shellcheck disable=SC2086
-$CC $TMPOBJ_1 $TMPOBJ_2 -o "${BINDIR}/${BINNAME}" -static $LDFLAGS
+$CC $TMPOBJ_1 $SHARED_OBJ -o "${BINDIR}/${BINNAME_1}" -static $LDFLAGS
 link_status=$?
 set -e
 if [ "$link_status" -ne 0 ]; then
 	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
 	# shellcheck disable=SC2086
-	$CC $TMPOBJ_1 $TMPOBJ_2 -o "${BINDIR}/${BINNAME}" $LDFLAGS || err "link failed"
+	$CC $TMPOBJ_1 $SHARED_OBJ -o "${BINDIR}/${BINNAME_1}" $LDFLAGS || err "link failed"
+fi
+
+# Link: attempt static then fallback to dynamic; keep hermetic LDFLAGS if provided
+printf 'Linking -> %s\n' "${BINDIR}/${BINNAME_2}"
+# Try static link first
+set +e
+# shellcheck disable=SC2086
+$CC $TMPOBJ_2 $SHARED_OBJ -o "${BINDIR}/${BINNAME_2}" -static $LDFLAGS
+link_status=$?
+set -e
+if [ "$link_status" -ne 0 ]; then
+	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
+	# shellcheck disable=SC2086
+	$CC $TMPOBJ_2 $SHARED_OBJ -o "${BINDIR}/${BINNAME_2}" $LDFLAGS || err "link failed"
+fi
+
+# Link: attempt static then fallback to dynamic; keep hermetic LDFLAGS if provided
+printf 'Linking -> %s\n' "${BINDIR}/${BINNAME_3}"
+# Try static link first
+set +e
+# shellcheck disable=SC2086
+$CC $TMPOBJ_3 $SHARED_OBJ -o "${BINDIR}/${BINNAME_3}" -static $LDFLAGS
+link_status=$?
+set -e
+if [ "$link_status" -ne 0 ]; then
+	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
+	# shellcheck disable=SC2086
+	$CC $TMPOBJ_3 $SHARED_OBJ -o "${BINDIR}/${BINNAME_3}" $LDFLAGS || err "link failed"
 fi
 
 # Optionally strip if available
 if command_exists "$STRIP"; then
-	printf 'Stripping binary...\n'
-	if ! "$STRIP" "${BINDIR}/${BINNAME}" >/dev/null 2>&1; then
+	printf 'Stripping binaries...\n'
+	if ! "$STRIP" "${BINDIR}/${BINNAME_1}" >/dev/null 2>&1; then
+		warn "strip failed; continuing"
+	fi
+	if ! "$STRIP" "${BINDIR}/${BINNAME_2}" >/dev/null 2>&1; then
+		warn "strip failed; continuing"
+	fi
+	if ! "$STRIP" "${BINDIR}/${BINNAME_3}" >/dev/null 2>&1; then
 		warn "strip failed; continuing"
 	fi
 fi
 
 # Stage install into DESTDIR + PREFIX
-mkdir -p -- "$(dirname "$OUT_BIN_PATH")"
-mv -- "${BINDIR}/${BINNAME}" "$OUT_BIN_PATH" || err "install move failed"
-chmod 0755 "$OUT_BIN_PATH"
+mkdir -p -- "$(dirname "$OUT_BIN_PATH_1")"
+mv -- "${BINDIR}/${BINNAME_1}" "$OUT_BIN_PATH_1" || err "install move failed"
+mv -- "${BINDIR}/${BINNAME_2}" "$OUT_BIN_PATH_2" || err "install move failed"
+mv -- "${BINDIR}/${BINNAME_3}" "$OUT_BIN_PATH_3" || err "install move failed"
+chmod 0755 "$OUT_BIN_PATH_1"
+chmod 0755 "$OUT_BIN_PATH_2"
+chmod 0755 "$OUT_BIN_PATH_3"
 
 # Verification: run binary with -q or --help if they exist, but do not modify host PATH.
-printf 'Verifying built FeatherHash sha256sum...\n'
+printf 'Verification...\n'
 $CC --version
-$OUT_BIN_PATH $SRC_1 2>/dev/null || true
-$OUT_BIN_PATH $SRC_2 2>/dev/null || true
+printf 'Verifying built FeatherHash %s...\n' $BINNAME_1
+$OUT_BIN_PATH_1 $SRC_1 2>/dev/null || true
+$OUT_BIN_PATH_1 $SRC_2 2>/dev/null || true
+$OUT_BIN_PATH_1 $SRC_3 2>/dev/null || true
 
+printf 'Verifying built FeatherHash %s...\n' $BINNAME_2
+$OUT_BIN_PATH_2 $SRC_1 2>/dev/null || true
+$OUT_BIN_PATH_2 $SRC_2 2>/dev/null || true
+$OUT_BIN_PATH_2 $SRC_3 2>/dev/null || true
+
+printf 'Verifying built FeatherHash %s...\n' $BINNAME_3
+$OUT_BIN_PATH_3 $SRC_1 2>/dev/null || true
+$OUT_BIN_PATH_3 $SRC_2 2>/dev/null || true
+$OUT_BIN_PATH_3 $SRC_3 2>/dev/null || true
 
 printf 'Build/install complete.\n'
-printf 'Staged install path: %s\n' "$OUT_BIN_PATH"
-printf 'To finalize install, copy %s to %s on the target system.\n' "$OUT_BIN_PATH" "${PREFIX}/${BINNAME}"
+printf 'Staged install path:\n %s\n %s\n %s\n' "$OUT_BIN_PATH_1" "$OUT_BIN_PATH_2" "$OUT_BIN_PATH_3"
+printf 'To finalize install,\n copy %s to %s on the target system.\n' "$OUT_BIN_PATH_1" "${PREFIX}/${BINNAME_1}"
+printf ' copy %s to %s on the target system.\n' "$OUT_BIN_PATH_2" "${PREFIX}/${BINNAME_2}"
+printf ' copy %s to %s on the target system.\n' "$OUT_BIN_PATH_3" "${PREFIX}/${BINNAME_3}"
