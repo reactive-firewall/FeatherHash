@@ -4,23 +4,24 @@ FROM --platform="linux/${TARGETARCH}" alpine:latest as featherhash-bellows
 RUN mkdir -p /FeatherHash/FeatherHash && \
     mkdir -p /FeatherHash/tests
 
-# Set the working directory inside the container
-WORKDIR /FeatherHash
-
 # Install necessary dependencies and build tools
 RUN apk update && \
     apk add --no-cache \
     clang \
     llvm \
-    cmd:bash
+    cmd:dash
 
 # Copy the project files into the container
 COPY build-featherHash.sh /FeatherHash/build-featherHash.sh
 COPY FeatherHash/* /FeatherHash/FeatherHash/
 COPY LICENSE /FeatherHash/LICENSE
 
+# Set the working directory inside the container
+WORKDIR /FeatherHash
+
 # Build the project using the provided build script
-RUN ./build-featherHash.sh
+RUN chmod +x build-featherHash.sh && \
+    dash ./build-featherHash.sh
 
 # Install necessary testing tools
 RUN apk update && \
