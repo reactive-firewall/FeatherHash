@@ -1,8 +1,8 @@
 # Use the official Alpine Linux image as the base image
 FROM --platform="linux/${TARGETARCH}" alpine:latest as featherhash-bellows
 
-RUN mkdir -p /NullForge/Make && \
-    mkdir -p /NullForge/tests
+RUN mkdir -p /FeatherHash/FeatherHash && \
+    mkdir -p /FeatherHash/tests
 
 # Set the working directory inside the container
 WORKDIR /FeatherHash
