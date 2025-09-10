@@ -1,5 +1,23 @@
 # Use the official Alpine Linux image as the base image
-FROM --platform="linux/${TARGETARCH}" alpine:latest as featherhash-bellows
+FROM --platform="linux/${TARGETARCH}" alpine:latest AS base-plus-dash
+LABEL version="3.0"
+LABEL org.opencontainers.image.title="base-plus-dash"
+LABEL org.opencontainers.image.description="Custom Alpine image with the dash shell installed."
+LABEL org.opencontainers.image.vendor="individual"
+LABEL org.opencontainers.image.licenses="BSD-2-Clause"
+SHELL [ "/bin/sh", "-c" ]
+
+RUN --mount=type=cache,target=/var/cache/apk,sharing=locked --network=default \
+  apk update \
+  && apk add cmd:dash
+SHELL [ "/bin/dash", "-l", "-c" ]
+ENTRYPOINT ["/bin/dash"]
+ENV DASH='/bin/dash'
+ENV HOSTNAME="base-plus-dash"
+# default to double login
+CMD [ "/bin/dash", "-l", "-c", "'exec -a dash /bin/dash -il'" ]
+
+FROM --platform="linux/${TARGETARCH}" base-plus-dash as featherhash-bellows
 
 RUN mkdir -p /FeatherHash/FeatherHash && \
     mkdir -p /FeatherHash/tests
@@ -45,7 +63,7 @@ ENTRYPOINT ["./out/bin/sha256sum"]
 FROM --platform="linux/${TARGETARCH}" scratch AS featherhash-shasum
 
 # set inherited values
-LABEL version="1.0"
+LABEL version="1.1"
 LABEL org.opencontainers.image.title="FeatherHash-shasum"
 LABEL org.opencontainers.image.description="Empty image with stage0 sha256sum, sha384sum, and sha512sum installed"
 LABEL org.opencontainers.image.vendor="individual"
