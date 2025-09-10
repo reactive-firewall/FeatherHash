@@ -15,12 +15,12 @@ RUN apk update && \
     cmd:bash
 
 # Copy the project files into the container
-COPY build-featherHash.bash /FeatherHash/build-featherHash.bash
+COPY build-featherHash.sh /FeatherHash/build-featherHash.sh
 COPY FeatherHash/* /FeatherHash/FeatherHash/
 COPY LICENSE /FeatherHash/LICENSE
 
 # Build the project using the provided build script
-RUN ./build-featherHash.bash
+RUN ./build-featherHash.sh
 
 # Install necessary testing tools
 RUN apk update && \
