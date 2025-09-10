@@ -9,6 +9,7 @@ RUN apk update && \
     apk add --no-cache \
     clang \
     llvm \
+    cmd:lld \
     cmd:dash
 
 # Copy the project files into the container
