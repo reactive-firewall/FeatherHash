@@ -35,7 +35,7 @@ COPY tests/* /FeatherHash/tests/
 RUN chmod +x tests/test_*.sh
 
 # Run the tests
-RUN ./tests/test_runner.sh
+RUN dash ./tests/test_runner.sh
 
 # Set the entry point to run the compiled binary
 ENTRYPOINT ["./out/bin/sha256sum"]
