@@ -34,9 +34,9 @@ unset PATH_ARG ;
 # small test vectors
 test_vectors() {
   # empty
-  test_256sum.sh || return 1;
-  test_384sum.sh || return 1;
-  test_512sum.sh || return 1;
+  dash $(which test_256sum.sh) || return 1;
+  dash $(which test_384sum.sh) || return 1;
+  dash $(which test_512sum.sh) || return 1;
 
   return 0
 }
