@@ -157,11 +157,14 @@ void sha512_init(sha512_ctx *c, const uint64_t iv[8]) {
 static void sha512_transform(uint64_t state[8], const uint8_t block[128]) {
 	uint64_t w[80];
 	for (int t = 0; t < 16; ++t) {
-		uint64_t hi = ((uint64_t)block[t*8] << 56) | ((uint64_t)block[t*8+1] << 48) |
-		((uint64_t)block[t*8+2] << 40) | ((uint64_t)block[t*8+3] << 32);
-		uint64_t lo = ((uint64_t)block[t*8+4] << 24) | ((uint64_t)block[t*8+5] << 16) |
-		((uint64_t)block[t*8+6] << 8) | ((uint64_t)block[t*8+7]);
-		w[t] = (hi << 32) | lo;
+		w[t] = ((uint64_t)block[t*8    ] << 56) |
+		((uint64_t)block[t*8 + 1] << 48) |
+		((uint64_t)block[t*8 + 2] << 40) |
+		((uint64_t)block[t*8 + 3] << 32) |
+		((uint64_t)block[t*8 + 4] << 24) |
+		((uint64_t)block[t*8 + 5] << 16) |
+		((uint64_t)block[t*8 + 6] <<  8) |
+		((uint64_t)block[t*8 + 7]      );
 	}
 	for (int t = 16; t < 80; ++t) {
 		uint64_t s0 = rotr64(w[t-15], 1) ^ rotr64(w[t-15], 8) ^ (w[t-15] >> 7);
@@ -180,9 +183,9 @@ static void sha512_transform(uint64_t state[8], const uint8_t block[128]) {
 		h = g; g = f; f = e; e = d + temp1;
 		d = c2; c2 = b; b = a; a = temp1 + temp2;
 	}
-	for (int i = 0; i < 8; ++i) state[i] += (uint64_t[]){a,b,c2,d,e,f,g,h}[i]; /* expand */
-	/* Note: The inline array above is a concise expression; to avoid non-portable compound literals in C89,
-	 we use it here because C11/C14/C23 allow it. It's also purely internal. */
+	state[0] += a; state[1] += b; state[2] += c2;
+	state[3] += d; state[4] += e; state[5] += f;
+	state[6] += g; state[7] += h;
 }
 
 /* Maintain 128-bit bit length via two 64-bit counters */
@@ -207,19 +210,28 @@ void sha512_update(sha512_ctx *c, const void *data, size_t len) {
 
 void sha512_final(sha512_ctx *c, uint8_t out[64]) {
 	size_t i = c->buflen;
-	c->buf[i++] = 0x80u;
+	c->buf[i++] = 0x80u;  /* append the '1' bit */
+	/* If there is not enough room for the 128‑bit length, pad and compress */
 	if (i > 112) {
 		while (i < 128) c->buf[i++] = 0;
 		sha512_transform(c->state, c->buf);
 		i = 0;
 	}
+	/* Pad with zeros up to the length field */
 	while (i < 112) c->buf[i++] = 0;
 	/* append 128-bit length big-endian: high then low */
 	uint64_t high = c->bitlen_high;
 	uint64_t low = c->bitlen_low;
-	for (int j = 0; j < 8; ++j) c->buf[15 - j] = (uint8_t)(low & 0xFFu), low >>= 8;
-	for (int j = 0; j < 8; ++j) c->buf[23 - j] = (uint8_t)(high & 0xFFu), high >>= 8;
+	/* low 64 bits at offset 112 ... 119 */
+	for (int j = 0; j < 8; ++j) {
+		c->buf[112+7 - j] = (uint8_t)(high & 0xFFu);
+		high >>= 8;
+		c->buf[120+7 - j] = (uint8_t)(low & 0xFFu);
+		low >>= 8;
+	}
+	/* Process the final block */
 	sha512_transform(c->state, c->buf);
+	/* Produce the 64‑byte digest */
 	for (int t = 0; t < 8; ++t) {
 		uint64_t v = c->state[t];
 		out[t*8 + 0] = (uint8_t)(v >> 56);
@@ -231,5 +243,6 @@ void sha512_final(sha512_ctx *c, uint8_t out[64]) {
 		out[t*8 + 6] = (uint8_t)(v >> 8);
 		out[t*8 + 7] = (uint8_t)(v);
 	}
+	/* Zero the context to avoid leaving data in memory */
 	memset(c, 0, sizeof(*c));
 }

@@ -13,7 +13,6 @@
 #
 ################################################################################
 # test_sha384.sh - compare FeatherHash binary against openssl dgst -sha384
-
 set -eu
 
 BINARY=${1:-./out/bin/sha384sum}
@@ -39,8 +38,8 @@ osum() {
 test_vectors() {
   # empty
   printf "" > /tmp/fh_empty
-  fh=$(printf "" | "$BINARY" | awk '{print $1}')
-  os=$(osum - '' )
+  fh=$("$BINARY" /tmp/fh_empty | awk '{print $1}')
+  os=$(osum /tmp/fh_empty )
   if [ "$fh" != "$os" ]; then
     printf "%s\n" "Mismatch empty string: fh=$fh os=$os" >&2; return 1
   fi
@@ -72,13 +71,13 @@ test_vectors() {
 }
 
 cleanup_test_artifacts() {
-  if [ ! -r /tmp/fh_empty ]; then
+  if [ -r /tmp/fh_empty ] || [ -e /tmp/fh_empty ]; then
     rm -f /tmp/fh_empty 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_abc ]; then
+  if [ -r /tmp/fh_abc ] || [ -e /tmp/fh_abc ]; then
     rm -f /tmp/fh_abc 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_rand ]; then
+  if [ -r /tmp/fh_rand ] || [ -e /tmp/fh_rand ]; then
     rm -f /tmp/fh_rand 2>/dev/null ;
   fi
   return 0
@@ -90,6 +89,6 @@ if test_vectors; then
   exit 0
 else
   cleanup_test_artifacts ;
-  echo "sha384 Tests failed" >&2
+  echo "sha 384 Tests failed" >&2
   exit 1
 fi

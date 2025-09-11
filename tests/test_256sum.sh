@@ -1,6 +1,5 @@
 #!/bin/dash
-# test_sha256.sh - compare FeatherHash binary against openssl dgst -sha256
-
+#
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted.
 #
@@ -11,7 +10,9 @@
 # WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
+#
+################################################################################
+# test_sha256.sh - compare FeatherHash binary against openssl dgst -sha256
 set -eu
 
 BINARY=${1:-./out/bin/sha256sum}
@@ -70,13 +71,13 @@ test_vectors() {
 }
 
 cleanup_test_artifacts() {
-  if [ ! -r /tmp/fh_empty ]; then
+  if [ -r /tmp/fh_empty ] || [ -e /tmp/fh_empty ]; then
     rm -f /tmp/fh_empty 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_abc ]; then
+  if [ -r /tmp/fh_abc ] || [ -e /tmp/fh_abc ]; then
     rm -f /tmp/fh_abc 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_rand ]; then
+  if [ -r /tmp/fh_rand ] || [ -e /tmp/fh_rand ]; then
     rm -f /tmp/fh_rand 2>/dev/null ;
   fi
   return 0

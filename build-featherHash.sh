@@ -28,7 +28,7 @@ DESTDIR_ARG="${3:-}"
 : "${STRIP:=strip}"
 
 # Build flags (can be overridden by env)
-: "${CFLAGS:=${CFLAGS_ARG:--O2 -ffunction-sections -fdata-sections -fPIC -Wall -Wextra -Werror}}"
+: "${CFLAGS:=${CFLAGS_ARG:---std=c23 -O2 -ffunction-sections -fdata-sections -fPIC -Wall -Wextra -Werror}}"
 : "${LDFLAGS:=-fuse-ld=lld -Wl}"
 
 # Paths (internal)
@@ -37,7 +37,8 @@ SRC_SHARED="${SRCDIR}/sha2.c"
 SRC_1="${SRCDIR}/sha256sum.c"
 SRC_2="${SRCDIR}/sha384sum.c"
 SRC_3="${SRCDIR}/sha512sum.c"
-HDR="${SRCDIR}/*.h"
+HDR_1="${SRCDIR}/sha2.h"
+HDR_2="${SRCDIR}/feather.h"
 PREFIX="/bin"
 BINNAME_1="sha256sum"
 BINNAME_2="sha384sum"
@@ -88,8 +89,11 @@ fi
 mkdir -p -- "$OBJDIR" "$BINDIR" "$INCLUDEDIR"
 
 # Copy header if present (optional)
-if [ -f "$HDR" ]; then
-	cp -- "$HDR" "$INCLUDEDIR/" || err "failed copying header"
+if [ -f "$HDR_1" ]; then
+	cp -- "$HDR_1" "$INCLUDEDIR/" || err "failed copying header"
+fi
+if [ -f "$HDR_2" ]; then
+	cp -- "$HDR_2" "$INCLUDEDIR/" || err "failed copying header"
 fi
 
 # Source check
@@ -135,10 +139,10 @@ mkdir -p -- "$BINDIR"
 set +e
 # shellcheck disable=SC2086
 $CC $TMPOBJ_1 $SHARED_OBJ -o "${BINDIR}/${BINNAME_1}" -static $LDFLAGS
-link_status=$?
+link_status_1=$?
 set -e
-if [ "$link_status" -ne 0 ]; then
-	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
+if [ "$link_status_1" -ne 0 ]; then
+	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status_1"
 	# shellcheck disable=SC2086
 	$CC $TMPOBJ_1 $SHARED_OBJ -o "${BINDIR}/${BINNAME_1}" $LDFLAGS || err "link failed"
 fi
@@ -149,10 +153,10 @@ printf 'Linking -> %s\n' "${BINDIR}/${BINNAME_2}"
 set +e
 # shellcheck disable=SC2086
 $CC $TMPOBJ_2 $SHARED_OBJ -o "${BINDIR}/${BINNAME_2}" -static $LDFLAGS
-link_status=$?
+link_status_2=$?
 set -e
-if [ "$link_status" -ne 0 ]; then
-	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
+if [ "$link_status_2" -ne 0 ]; then
+	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status_2"
 	# shellcheck disable=SC2086
 	$CC $TMPOBJ_2 $SHARED_OBJ -o "${BINDIR}/${BINNAME_2}" $LDFLAGS || err "link failed"
 fi
@@ -163,13 +167,17 @@ printf 'Linking -> %s\n' "${BINDIR}/${BINNAME_3}"
 set +e
 # shellcheck disable=SC2086
 $CC $TMPOBJ_3 $SHARED_OBJ -o "${BINDIR}/${BINNAME_3}" -static $LDFLAGS
-link_status=$?
+link_status_3=$?
 set -e
-if [ "$link_status" -ne 0 ]; then
-	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status"
+if [ "$link_status_3" -ne 0 ]; then
+	printf 'Static link failed (status %d), retrying dynamic link...\n' "$link_status_3"
 	# shellcheck disable=SC2086
 	$CC $TMPOBJ_3 $SHARED_OBJ -o "${BINDIR}/${BINNAME_3}" $LDFLAGS || err "link failed"
 fi
+
+unset link_status_1 ;
+unset link_status_2 ;
+unset link_status_3 ;
 
 # Optionally strip if available
 if command_exists "$STRIP"; then

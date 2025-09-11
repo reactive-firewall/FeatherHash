@@ -13,7 +13,6 @@
 #
 ################################################################################
 # test_sha512.sh - compare FeatherHash binary against openssl dgst -sha512
-
 set -eu
 
 BINARY=${1:-./out/bin/sha512sum}
@@ -72,13 +71,13 @@ test_vectors() {
 }
 
 cleanup_test_artifacts() {
-  if [ ! -r /tmp/fh_empty ]; then
+  if [ -r /tmp/fh_empty ] || [ -e /tmp/fh_empty ]; then
     rm -f /tmp/fh_empty 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_abc ]; then
+  if [ -r /tmp/fh_abc ] || [ -e /tmp/fh_abc ]; then
     rm -f /tmp/fh_abc 2>/dev/null ;
   fi
-  if [ ! -r /tmp/fh_rand ]; then
+  if [ -r /tmp/fh_rand ] || [ -e /tmp/fh_rand ]; then
     rm -f /tmp/fh_rand 2>/dev/null ;
   fi
   return 0
