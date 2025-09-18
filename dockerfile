@@ -33,6 +33,7 @@ RUN apk update && \
 COPY build-featherHash.sh /FeatherHash/build-featherHash.sh
 COPY FeatherHash/* /FeatherHash/FeatherHash/
 COPY LICENSE /FeatherHash/LICENSE
+COPY LICENSE /FeatherHash/.PATENT-NOTE-6829355
 
 # Set the working directory inside the container
 WORKDIR /FeatherHash
@@ -70,5 +71,6 @@ LABEL org.opencontainers.image.licenses="0BSD"
 
 COPY --from=featherhash-bellows /FeatherHash/out/bin /bin
 COPY --from=featherhash-bellows /FeatherHash/LICENSE /LICENSE
+COPY --from=featherhash-bellows /FeatherHash/.PATENT-NOTE-6829355 /.PATENT-NOTE-6829355
 
 ENTRYPOINT ["/bin/sha256sum"]

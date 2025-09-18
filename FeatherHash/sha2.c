@@ -1,6 +1,19 @@
 /* CC0 1.0 Universal - sha2.c
+
+ Permission to use, copy, modify, and/or distribute this software for any
+ purpose with or without fee is hereby granted.
+
+ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
  Minimal SHA-256 and SHA-512 implementations per FIPS 180-4.
- No dynamic allocation. Portable C (C11/C14/C23). */
+ No dynamic allocation. Portable C (C11/C14/C23).
+*/
 #include "sha2.h"
 
 #if defined(__has_include)
@@ -20,11 +33,21 @@
 #endif /* !defined(__has_include) */
 
 /* --- Utility macros --- */
-static inline uint32_t rotr32(uint32_t x, unsigned n) {
+
+uint32_t rotr32(uint32_t x, unsigned n) {
+#if defined(__clang__) && __clang__ && __has_builtin(__builtin_rotateright32)
+	return __builtin_rotateright32(x, n);
+#else
 	return (x >> n) | (x << (32 - n));
+#endif
 }
-static inline uint64_t rotr64(uint64_t x, unsigned n) {
+
+uint64_t rotr64(uint64_t x, unsigned n) {
+#if defined(__clang__) && __clang__ && __has_builtin(__builtin_rotateright64)
+	return __builtin_rotateright64(x, n);
+#else
 	return (x >> n) | (x << (64 - n));
+#endif
 }
 
 /* --- SHA-256 implementation --- */
@@ -61,19 +84,13 @@ static void sha256_transform(uint32_t state[8], const uint8_t block[64]) {
 		((uint32_t)block[t*4 + 3]);
 	}
 	for (int t = 16; t < 64; ++t) {
-		uint32_t s0 = rotr32(w[t-15], 7) ^ rotr32(w[t-15], 18) ^ (w[t-15] >> 3);
-		uint32_t s1 = rotr32(w[t-2], 17) ^ rotr32(w[t-2], 19) ^ (w[t-2] >> 10);
-		w[t] = w[t-16] + s0 + w[t-7] + s1;
+		w[t] = w[t-16] + SIG0(w[t-15]) + w[t-7] + SIG1(w[t-2]);
 	}
 	uint32_t a = state[0], b = state[1], c = state[2], d = state[3];
 	uint32_t e = state[4], f = state[5], g = state[6], h = state[7];
 	for (int t = 0; t < 64; ++t) {
-		uint32_t S1 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25);
-		uint32_t ch = (e & f) ^ ((~e) & g);
-		uint32_t temp1 = h + S1 + ch + K256[t] + w[t];
-		uint32_t S0 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22);
-		uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
-		uint32_t temp2 = S0 + maj;
+		uint32_t temp1 = h + EP1(e) + CH(e,f,g) + K256[t] + w[t];
+		uint32_t temp2 = EP0(a) + MAJ(a, b, c);
 		h = g; g = f; f = e; e = d + temp1;
 		d = c; c = b; b = a; a = temp1 + temp2;
 	}
